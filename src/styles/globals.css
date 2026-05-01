@@ -112,3 +112,31 @@ html {
 .leaflet-container {
   border-radius: inherit;
 }
+
+/* Styling Pop-up Modern untuk Leaflet */
+.modern-popup .leaflet-popup-content-wrapper {
+  border-radius: 16px !important;
+  padding: 0 !important;
+  overflow: hidden;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border: none;
+}
+
+.modern-popup .leaflet-popup-content {
+  margin: 0 !important; /* Menghilangkan margin bawaan agar gambar mepet ke atas */
+  width: 220px !important;
+}
+
+/* Styling konten di dalam pop-up */
+.modern-popup .popup-inner-content {
+  padding: 12px;
+}
+
+.modern-popup .leaflet-popup-tip {
+  background: white;
+}
+
+/* Menghilangkan tombol close bawaan Leaflet agar lebih clean (opsional) */
+.modern-popup .leaflet-popup-close-button {
+  display: none;
+}

@@ -58,7 +58,6 @@ export function MapView({ places, selected, onSelect, isDark, userLoc, onLocate,
     };
   }, []);
 
-  // Swap basemap tiles on theme change
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -68,19 +67,19 @@ export function MapView({ places, selected, onSelect, isDark, userLoc, onLocate,
     const url = isDark
       ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
       : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+    
     tileRef.current = L.tileLayer(url, {
       attribution: "&copy; OpenStreetMap contributors",
     }).addTo(map);
   }, [isDark]);
 
-  // Sync markers with the filtered places list
+  // 4. Sinkronisasi Marker & Popup Detail Estetik
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const existing = markersRef.current;
     const nextIds = new Set(places.map((p) => p.id));
 
-    // Remove markers no longer in the filtered set
     existing.forEach((marker, id) => {
       if (!nextIds.has(id)) {
         map.removeLayer(marker);
@@ -88,26 +87,50 @@ export function MapView({ places, selected, onSelect, isDark, userLoc, onLocate,
       }
     });
 
-    // Add markers for newly visible places
     places.forEach((p) => {
       if (existing.has(p.id)) return;
       const meta = CATEGORY_META[p.category];
+      if (!meta) return;
+
       const marker = L.marker([p.lat, p.lng], { icon: makeIcon(meta.color, meta.emoji) });
-      marker.bindPopup(
-        `<div style="width:220px">
-          <img src="${p.image}" alt="${p.name}" style="width:100%;height:100px;object-fit:cover;border-radius:8px" />
-          <div style="margin-top:8px"><strong>${p.name}</strong>
-            <div style="font-size:12px;color:#666">⭐ ${p.rating} · ${p.region}</div>
-            <div style="font-size:12px;margin-top:4px">${p.description}</div>
+
+      // Membuat kontainer pop-up yang bisa diklik
+      const popupDiv = document.createElement('div');
+      popupDiv.className = "popup-inner-container"; // Untuk target klik
+      popupDiv.style.cssText = "width:220px; cursor:pointer;";
+
+      popupDiv.innerHTML = `
+        <img src="${p.image}" style="width:100%; height:115px; object-fit:cover; display:block;" />
+        <div class="popup-inner-content" style="padding:12px;">
+          <strong style="font-size:15px; color:#1a1a1a; display:block;">${p.name}</strong>
+          <div style="font-size:13px; color:#4b5563; margin-top:4px; display:flex; align-items:center; gap:4px;">
+            <span style="color:#f59e0b;">⭐</span> 
+            <span>${p.rating}</span>
+            <span style="color:#9ca3af;">·</span>
+            <span>${p.region}</span>
           </div>
-        </div>`
-      );
-      marker.on("click", () => onSelectRef.current(p));
+          <p style="font-size:12px; color:#6b7280; margin-top:6px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">
+            ${p.description}
+          </p>
+        </div>
+      `;
+
+      // Seluruh area pop-up sekarang memicu onSelect
+      popupDiv.onclick = () => {
+        onSelectRef.current(p);
+        marker.closePopup();
+      };
+
+      // Menambahkan class custom agar styling Leaflet bawaan tidak merusak desain
+      marker.bindPopup(popupDiv, {
+        className: 'modern-popup',
+        maxWidth: 250
+      });
+
       marker.addTo(map);
       existing.set(p.id, marker);
     });
   }, [places]);
-
   // Drop / update the user's current-location marker
   useEffect(() => {
     const map = mapRef.current;
