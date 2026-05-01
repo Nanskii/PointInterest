@@ -1,11 +1,12 @@
 import { AddPlaceModal } from "./components/AddPlaceModal";
 import { AuthModal, type AuthUser } from "./components/AuthModal";
 import { UserMenu } from "./components/UserMenu";
+import { supabase } from "../lib/supabaseClient";
 
 import { useEffect, useMemo, useState } from "react";
 import { Heart, MapPin, Search, Sparkles, Menu, X, Sun, Moon, Plus, Star, LogIn } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { CATEGORY_META, PLACES, type Category, type Place } from "./data/places";
+import { CATEGORY_META, type Category, type Place } from "./data/places";
 import { MapView } from "./components/MapView";
 import { PlaceCard } from "./components/PlaceCard";
 import { PlaceDetail, type Review } from "./components/PlaceDetail";
@@ -34,8 +35,9 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [minRating, setMinRating] = useState(0);
-  const [userPlaces, setUserPlaces] = useState<Place[]>([]);
+  const [allPlaces, setAllPlaces] = useState<Place[]>([]);
   const [reviews, setReviews] = useState<Record<string, Review[]>>({});
+  const [userPlaces, setUserPlaces] = useState<Place[]>([]);
   const [addOpen, setAddOpen] = useState(false);
 
   // Auth state
@@ -56,52 +58,194 @@ export default function App() {
     localStorage.setItem("theme", isDark ? "dark" : "light");
   }, [isDark]);
 
-  // Restore session on mount
   useEffect(() => {
-    const sessionId = localStorage.getItem("jn_session");
-    if (sessionId) {
-      try {
-        const users = JSON.parse(localStorage.getItem("jn_users") || "[]");
-        const user = users.find((u: AuthUser & { passwordHash: string }) => u.id === sessionId);
-        if (user) setCurrentUser({ id: user.id, name: user.name, email: user.email });
-      } catch { /* no-op */ }
+    // Cek apakah user sudah login di browser ini
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setCurrentUser({
+          id: session.user.id,
+          name: session.user.user_metadata.full_name,
+          email: session.user.email ?? ""
+        });
+      }
+    });
+
+    // Pantau kalau user klik login atau logout
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setCurrentUser({
+          id: session.user.id,
+          name: session.user.user_metadata.full_name,
+          email: session.user.email ?? ""
+        });
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!currentUser) {
+        setFavorites(new Set()); // Kosongkan jika logout
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('favorites')
+        .select('location_id')
+        .eq('user_id', currentUser.id);
+
+      if (!error && data) {
+        const favSet = new Set(data.map(f => f.location_id));
+        setFavorites(favSet);
+      }
+    };
+
+    fetchFavorites();
+  }, [currentUser]);
+
+  const fetchPlacesFromSupabase = async () => {
+    const { data, error } = await supabase
+      .from('locations')
+      .select(`
+        *,
+        reviews (*)
+      `); // Perhatikan kurung buka-tutup untuk reviews
+
+    if (error) {
+      console.error("Gagal ambil data:", error.message);
+      return;
     }
+
+    if (data) {
+      console.log("Data diterima beserta review:", data);
+      setAllPlaces(data); 
+    }
+  };
+  // Panggil fungsi ini saat pertama kali aplikasi dibuka
+  useEffect(() => {
+    fetchPlacesFromSupabase();
   }, []);
 
-  // Persist favorites, reviews, and user-added places in localStorage
-  useEffect(() => {
-    const favs = localStorage.getItem("favs");
-    if (favs) setFavorites(new Set(JSON.parse(favs)));
-    const rv = localStorage.getItem("reviews");
-    if (rv) setReviews(JSON.parse(rv));
-    const up = localStorage.getItem("userPlaces");
-    if (up) setUserPlaces(JSON.parse(up));
-  }, []);
-  useEffect(() => {
-    localStorage.setItem("favs", JSON.stringify([...favorites]));
-  }, [favorites]);
-  useEffect(() => {
-    localStorage.setItem("reviews", JSON.stringify(reviews));
-  }, [reviews]);
-  useEffect(() => {
-    localStorage.setItem("userPlaces", JSON.stringify(userPlaces));
-  }, [userPlaces]);
+  const addReview = async (placeId: string, review: Review) => {
+    if (!currentUser) return;
 
-  // Combine seeded + user-contributed places
-  const allPlaces = useMemo(() => [...PLACES, ...userPlaces], [userPlaces]);
+    const { error } = await supabase
+      .from('reviews')
+      .insert({
+        location_id: placeId,
+        user_id: currentUser.id,
+        rating: review.rating,
+        comment: review.comment,
+        user_name: currentUser.name
+      });
 
-  const addReview = (placeId: string, review: Review) => {
-    setReviews((prev) => ({ ...prev, [placeId]: [review, ...(prev[placeId] || [])] }));
+    if (!error) {
+      const { data: updatedPlace, error: fetchError } = await supabase
+        .from('locations')
+        .select('*, reviews(*)')
+        .eq('id', placeId)
+        .single();
+
+      if (!fetchError && updatedPlace) {
+        // 1. UPDATE MODAL SECARA INSTAN
+        setSelected({ ...updatedPlace });
+
+        // 2. UPDATE LIST UTAMA (PENTING: Gunakan Functional Update + New Reference)
+        setAllPlaces((prev) => {
+          const index = prev.findIndex((p) => p.id === placeId);
+          if (index === -1) return prev;
+
+          const newPlaces = [...prev]; // Copy array
+          newPlaces[index] = { ...updatedPlace }; // Ganti dengan objek baru (copy)
+          return newPlaces; // Return array baru
+        });
+        
+        console.log("Sync Berhasil!");
+      }
+    }
   };
 
-  const addPlace = (p: Place) => setUserPlaces((prev) => [p, ...prev]);
+  const addPlace = async (p: Place) => {
+    // Pengecekan keamanan: Jika currentUser kosong, batalkan proses
+    if (!currentUser) {
+      setAuthOpen(true);
+      return;
+    }
 
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+    const { data, error } = await supabase
+      .from('locations')
+      .insert([
+        {
+          name: p.name,
+          category: p.category,
+          region: p.region,
+          address: p.address,
+          description: p.description,
+          rating: 0,
+          image: p.image,
+          lat: p.lat,
+          lng: p.lng,
+          tags: p.tags,
+          // Tips: Kamu bisa menambahkan user_id pembuat jika ingin fitur "Tempat Saya"
+          // created_by: currentUser.id 
+        }
+      ])
+      .select();
+
+    if (!error && data) {
+      setAllPlaces((prev) => [...prev, data[0]]);
+      setAddOpen(false);
+    } else {
+      console.error("Gagal menambah tempat:", error?.message);
+    }
+  };
+
+  const toggleFavorite = async (placeId: string) => {
+    // Cek apakah user sudah login
+    if (!currentUser) {
+      setSelected(null); // 1. TUTUP modal detail tempat terlebih dahulu
+      setAuthOpen(true); // 2. BUKA modal login
+      return;
+    }
+
+    const isAlreadyFavorite = favorites.has(placeId);
+
+    if (isAlreadyFavorite) {
+      // JIKA SUDAH FAVORIT: Hapus dari database
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .eq('user_id', currentUser.id)
+        .eq('location_id', placeId);
+
+      if (!error) {
+        setFavorites((prev) => {
+          const next = new Set(prev);
+          next.delete(placeId);
+          return next;
+        });
+      }
+    } else {
+      // JIKA BELUM FAVORIT: Tambahkan ke database
+      const { error } = await supabase
+        .from('favorites')
+        .insert({
+          user_id: currentUser.id,
+          location_id: placeId
+        });
+
+      if (!error) {
+        setFavorites((prev) => {
+          const next = new Set(prev);
+          next.add(placeId);
+          return next;
+        });
+      }
+    }
   };
 
   const toggleCategory = (c: Category) => {
@@ -112,18 +256,30 @@ export default function App() {
     });
   };
 
-  // Filter by category, name/region/tag search, min rating, and favorites toggle
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return allPlaces.filter((p) => {
+    
+    // Pastikan allPlaces tidak undefined atau null sebelum di-filter
+    return (allPlaces || []).filter((p) => {
+      // 1. Filter Kategori
       if (!activeCategories.has(p.category)) return false;
-      if (showFavorites && !favorites.has(p.id)) return false;
+      
+      // 2. Filter Favorit (Gunakan opsional chaining agar tidak crash)
+      if (showFavorites && !favorites?.has(p.id)) return false;
+      
+      // 3. Filter Rating
       if (p.rating < minRating) return false;
+      
+      // 4. Jika tidak ada pencarian, tampilkan semua yang lolos filter di atas
       if (!q) return true;
+      
+      // 5. Filter Pencarian (Pastikan p.tags adalah array sebelum memanggil .some)
+      const tagsArray = Array.isArray(p.tags) ? p.tags : [];
+      
       return (
         p.name.toLowerCase().includes(q) ||
         p.region.toLowerCase().includes(q) ||
-        p.tags.some((t) => t.toLowerCase().includes(q))
+        tagsArray.some((t) => String(t).toLowerCase().includes(q))
       );
     });
   }, [allPlaces, activeCategories, search, showFavorites, favorites, minRating]);
@@ -182,8 +338,9 @@ export default function App() {
     setLocationToast(null);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("jn_session");
+  const handleLogout = async () => {
+    await supabase.auth.signOut(); // Menghapus sesi di database
+    localStorage.removeItem("jn_session"); // Opsional, membersihkan sisa data lama
     setCurrentUser(null);
   };
 
@@ -199,7 +356,7 @@ export default function App() {
             <MapPin className="w-5 h-5" />
           </div>
           <div className="hidden sm:block">
-            <div className={`leading-tight ${isDark ? "text-neutral-100" : "text-neutral-900"}`}>Jelajah Nusantara</div>
+            <div className={`leading-tight font-bold ${isDark ? "text-neutral-100" : "text-neutral-900"}`}>PointInterest</div>
             <div className={`text-xs leading-tight ${isDark ? "text-neutral-400" : "text-neutral-500"}`}>Peta wisata & kuliner Indonesia</div>
           </div>
         </div>
@@ -220,7 +377,13 @@ export default function App() {
 
         {/* Add new place */}
         <button
-          onClick={() => setAddOpen(true)}
+          onClick={() => {
+            if (!currentUser) {
+              setAuthOpen(true); // Buka login jika belum masuk
+            } else {
+              setAddOpen(true);  // Buka modal tambah tempat jika sudah login
+            }
+          }}
           aria-label="Add new place"
           className="w-10 h-10 rounded-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center transition-colors shadow-sm"
         >
@@ -496,18 +659,22 @@ export default function App() {
       />
 
       <PlaceDetail
+        key={selected?.id || 'none'}
         place={selected}
         isFavorite={selected ? favorites.has(selected.id) : false}
-        reviews={selected ? reviews[selected.id] || [] : []}
+        reviews={(selected as any)?.reviews || []}
+        currentUser={currentUser}
+        isDark={isDark}
         onToggleFavorite={toggleFavorite}
         onAddReview={addReview}
+        onOpenAuth={() => setAuthOpen(true)}
         onClose={() => setSelected(null)}
       />
 
       <AddPlaceModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onAdd={addPlace}
+        onAdd={addPlace} // Hubungkan ke fungsi yang baru kita buat
         isDark={isDark}
       />
     </div>

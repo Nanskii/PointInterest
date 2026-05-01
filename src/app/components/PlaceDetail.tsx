@@ -3,21 +3,25 @@ import { Heart, MapPin, Star, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { CATEGORY_META, type Place } from "../data/places";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { AuthUser } from "../../types/auth";
 
 export interface Review {
   id: string;
-  author: string;
+  user_name: string;
   rating: number;
   comment: string;
-  date: string;
+  created_at: string;
 }
 
 interface Props {
   place: Place | null;
   isFavorite: boolean;
   reviews: Review[];
+  currentUser: AuthUser | null; // Tambahkan ini
+  isDark: boolean;              // Tambahkan ini untuk styling
   onToggleFavorite: (id: string) => void;
   onAddReview: (placeId: string, review: Review) => void;
+  onOpenAuth: () => void;       // Tambahkan ini
   onClose: () => void;
 }
 
@@ -47,9 +51,8 @@ function StarInput({ value, onChange }: { value: number; onChange: (n: number) =
 }
 
 export function PlaceDetail({
-  place, isFavorite, reviews, onToggleFavorite, onAddReview, onClose,
+  place, isFavorite, reviews, onToggleFavorite, onAddReview, onClose, currentUser, onOpenAuth, isDark
 }: Props) {
-  const [author, setAuthor] = useState("");
   const [comment, setComment] = useState("");
   const [rating, setRating] = useState(0);
 
@@ -61,15 +64,18 @@ export function PlaceDetail({
 
   const submitReview = (e: FormEvent) => {
     e.preventDefault();
-    if (!place || !comment.trim() || rating === 0) return;
+    if (!place || !comment.trim() || rating === 0 || !currentUser) return; // Tambah cek currentUser
+
     onAddReview(place.id, {
       id: `r-${Date.now()}`,
-      author: author.trim() || "Anonim",
+      user_name: currentUser.name, // Ambil otomatis dari profil login
       rating,
       comment: comment.trim(),
-      date: new Date().toLocaleDateString(),
+      created_at: new Date().toISOString(),
     });
-    setAuthor(""); setComment(""); setRating(0);
+    
+    setComment(""); 
+    setRating(0);
   };
 
   return (
@@ -151,8 +157,8 @@ export function PlaceDetail({
                   {reviews.map((r) => (
                     <div key={r.id} className="bg-neutral-50 dark:bg-neutral-800 rounded-xl p-3">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm text-neutral-900 dark:text-neutral-100">{r.author}</span>
-                        <span className="text-xs text-neutral-500">{r.date}</span>
+                        <span className="text-sm text-neutral-900 dark:text-neutral-100">{r.user_name}</span>
+                        <span className="text-xs text-neutral-500">{r.created_at}</span>
                       </div>
                       <div className="flex items-center gap-0.5 mb-1">
                         {[1, 2, 3, 4, 5].map((n) => (
@@ -170,31 +176,45 @@ export function PlaceDetail({
                 </div>
 
                 {/* Review form */}
-                <form onSubmit={submitReview} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-neutral-700 dark:text-neutral-300">Rating kamu</span>
-                    <StarInput value={rating} onChange={setRating} />
-                  </div>
-                  <input
-                    placeholder="Nama kamu"
-                    value={author}
-                    onChange={(e) => setAuthor(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-100 dark:focus:ring-green-900"
-                  />
-                  <textarea
-                    placeholder="Bagikan pengalamanmu..."
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    className="w-full px-3 py-2 h-20 resize-none rounded-lg border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-100 dark:focus:ring-green-900"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!comment.trim() || rating === 0}
-                    className="w-full py-2.5 rounded-full bg-green-600 hover:bg-green-700 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Kirim ulasan
-                  </button>
-                </form>
+                <div className="mt-4">
+                  {currentUser ? (
+                    <form onSubmit={submitReview} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-neutral-700 dark:text-neutral-300">Rating kamu</span>
+                        <StarInput value={rating} onChange={setRating} />
+                      </div>
+                      {/* Input nama dihapus karena kita ambil dari data login */}
+                      <textarea
+                        placeholder={`Beri ulasan sebagai ${currentUser.name}...`}
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        className="w-full px-3 py-2 h-20 resize-none rounded-lg border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-100 dark:focus:ring-green-900"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!comment.trim() || rating === 0}
+                        className="w-full py-2.5 rounded-full bg-green-600 hover:bg-green-700 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Kirim ulasan
+                      </button>
+                    </form>
+                  ) : (
+                    <div className={`p-4 rounded-xl border text-center ${isDark ? "bg-neutral-800/50 border-neutral-700" : "bg-neutral-50 border-neutral-200"}`}>
+                      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-3">
+                        Kamu harus masuk akun untuk memberikan ulasan.
+                      </p>
+                      <button
+                        onClick={() => {
+                          onClose();      // Tutup modal detail tempat dulu
+                          onOpenAuth();   // Baru buka modal login
+                        }}
+                        className="text-sm font-semibold text-green-600 hover:text-green-500 transition-colors"
+                      >
+                        Masuk Sekarang
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>

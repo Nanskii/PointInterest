@@ -1,19 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Eye, EyeOff, Mail, Lock, User, MapPin, CheckCircle2 } from "lucide-react";
+import { supabase } from "../../lib/supabaseClient";
 
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
-}
-
-interface StoredUser {
-  id: string;
-  name: string;
-  email: string;
-  passwordHash: string;
-  createdAt: string;
 }
 
 interface Props {
@@ -24,16 +17,6 @@ interface Props {
   onLogin: (user: AuthUser) => void;
 }
 
-// Simple obfuscation for demo – NOT for production use
-const hashPassword = (pw: string) => btoa(unescape(encodeURIComponent(pw + "_jn_2024")));
-
-const getStoredUsers = (): StoredUser[] => {
-  try {
-    return JSON.parse(localStorage.getItem("jn_users") || "[]");
-  } catch {
-    return [];
-  }
-};
 
 function InputField({
   label,
@@ -126,26 +109,30 @@ export function AuthModal({ open, isDark, initialTab = "login", onClose, onLogin
     e.preventDefault();
     setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
 
-    const users = getStoredUsers();
-    const found = users.find(
-      (u) =>
-        u.email.toLowerCase() === lEmail.toLowerCase() &&
-        u.passwordHash === hashPassword(lPassword)
-    );
+    // Memanggil Supabase untuk mengecek email & password
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: lEmail,
+      password: lPassword,
+    });
 
-    if (!found) {
+    if (error) {
       setError("Email atau kata sandi tidak sesuai.");
       setLoading(false);
       return;
     }
 
-    localStorage.setItem("jn_session", found.id);
-    onLogin({ id: found.id, name: found.name, email: found.email });
-    reset();
+    if (data.user) {
+      // data.user.user_metadata.full_name mengambil nama yang disimpan saat daftar
+      onLogin({ 
+        id: data.user.id, 
+        name: data.user.user_metadata.full_name || "User", 
+        email: data.user.email || "" 
+      });
+      reset();
+      onClose();
+    }
     setLoading(false);
-    onClose();
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -162,29 +149,39 @@ export function AuthModal({ open, isDark, initialTab = "login", onClose, onLogin
     }
 
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
 
-    const users = getStoredUsers();
-    if (users.find((u) => u.email.toLowerCase() === rEmail.toLowerCase())) {
-      setError("Email sudah terdaftar. Silakan masuk.");
+    // Mendaftarkan user baru ke database Supabase
+    const { data, error } = await supabase.auth.signUp({
+      email: rEmail,
+      password: rPassword,
+      options: {
+        data: {
+          full_name: rName, // Menyimpan nama ke metadata user
+        }
+      }
+    });
+
+    if (error) {
+      setError(error.message);
       setLoading(false);
       return;
     }
 
-    const newUser: StoredUser = {
-      id: `usr_${Date.now()}`,
-      name: rName.trim(),
-      email: rEmail.toLowerCase().trim(),
-      passwordHash: hashPassword(rPassword),
-      createdAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem("jn_users", JSON.stringify([...users, newUser]));
-    localStorage.setItem("jn_session", newUser.id);
-    onLogin({ id: newUser.id, name: newUser.name, email: newUser.email });
-    reset();
+    if (data.user) {
+      alert("Pendaftaran berhasil! Silakan cek email kamu untuk verifikasi.");
+      onClose();
+    }
     setLoading(false);
-    onClose();
+  };
+
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+    if (error) setError(error.message);
   };
 
   return (
@@ -266,6 +263,37 @@ export function AuthModal({ open, isDark, initialTab = "login", onClose, onLogin
 
             {/* Forms */}
             <div className="px-6 py-5">
+              {/* 1. Tombol Google di Paling Atas */}
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className={`w-full flex items-center justify-center gap-3 py-2.5 rounded-2xl border transition-all hover:scale-[1.02] active:scale-[0.98] mb-4 ${
+                  isDark 
+                    ? "bg-neutral-800 border-neutral-700 text-white hover:bg-neutral-750" 
+                    : "bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+                }`}
+              >
+                <img 
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+                  className="w-5 h-5" 
+                  alt="Google" 
+                />
+                <span className="text-sm font-medium">Lanjut dengan Google</span>
+              </button>
+
+              {/* 2. Garis Pemisah */}
+              <div className="relative mb-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className={`w-full border-t ${isDark ? "border-neutral-800" : "border-neutral-200"}`}></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className={`px-2 ${isDark ? "bg-neutral-900 text-neutral-500" : "bg-white text-neutral-400"}`}>
+                    Atau gunakan email
+                  </span>
+                </div>
+              </div>
+
+              {/* 3. Animasi Form Login/Register */}
               <AnimatePresence mode="wait">
                 {tab === "login" ? (
                   <motion.form
@@ -318,17 +346,9 @@ export function AuthModal({ open, isDark, initialTab = "login", onClose, onLogin
                     <button
                       type="submit"
                       disabled={loading || !lEmail || !lPassword}
-                      className="mt-1 py-3 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white transition-all hover:shadow-lg hover:shadow-green-500/25 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
+                      className="mt-1 py-3 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white transition-all hover:shadow-lg hover:shadow-green-500/25 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
                     >
-                      {loading ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                          </svg>
-                          Memproses…
-                        </span>
-                      ) : "Masuk"}
+                      {loading ? "Memproses..." : "Masuk"}
                     </button>
 
                     <p className={`text-center text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}>
@@ -407,20 +427,6 @@ export function AuthModal({ open, isDark, initialTab = "login", onClose, onLogin
                       }
                     />
 
-                    {/* Password match indicator */}
-                    {rPassword && rConfirm && (
-                      <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className={`text-xs flex items-center gap-1.5 ${
-                          rPassword === rConfirm ? "text-green-500" : "text-red-400"
-                        }`}
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        {rPassword === rConfirm ? "Kata sandi cocok" : "Kata sandi tidak cocok"}
-                      </motion.p>
-                    )}
-
                     {error && (
                       <motion.p
                         initial={{ opacity: 0, y: -4 }}
@@ -434,17 +440,9 @@ export function AuthModal({ open, isDark, initialTab = "login", onClose, onLogin
                     <button
                       type="submit"
                       disabled={loading || !rName || !rEmail || !rPassword || !rConfirm}
-                      className="mt-1 py-3 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white transition-all hover:shadow-lg hover:shadow-green-500/25 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
+                      className="mt-1 py-3 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white transition-all hover:shadow-lg hover:shadow-green-500/25"
                     >
-                      {loading ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                          </svg>
-                          Mendaftar…
-                        </span>
-                      ) : "Buat Akun"}
+                      {loading ? "Mendaftar..." : "Buat Akun"}
                     </button>
 
                     <p className={`text-center text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}>
@@ -464,7 +462,7 @@ export function AuthModal({ open, isDark, initialTab = "login", onClose, onLogin
 
             {/* Footer */}
             <div className={`px-6 pb-5 text-center text-xs ${isDark ? "text-neutral-600" : "text-neutral-400"}`}>
-              Data disimpan secara lokal di perangkat kamu 🔒
+            Akun kamu aman tersinkronisasi dengan Cloud ☁️
             </div>
           </motion.div>
         </motion.div>
