@@ -130,41 +130,37 @@ export default function App() {
     fetchPlacesFromSupabase();
   }, []);
 
+  // FILE: App.tsx
   const addReview = async (placeId: string, review: Review) => {
     if (!currentUser) return;
 
-    const { error } = await supabase
-      .from('reviews')
-      .insert({
-        location_id: placeId,
-        user_id: currentUser.id,
-        rating: review.rating,
-        comment: review.comment,
-        user_name: currentUser.name
-      });
+    const { error } = await supabase.from('reviews').insert({
+      location_id: placeId,
+      user_id: currentUser.id,
+      rating: review.rating,
+      comment: review.comment,
+      user_name: currentUser.name
+    });
 
     if (!error) {
-      const { data: updatedPlace, error: fetchError } = await supabase
+      // 1. Ambil data spesifik yang baru saja di-update
+      const { data: updatedPlace } = await supabase
         .from('locations')
         .select('*, reviews(*)')
         .eq('id', placeId)
         .single();
 
-      if (!fetchError && updatedPlace) {
-        // 1. UPDATE MODAL SECARA INSTAN
-        setSelected({ ...updatedPlace });
+      if (updatedPlace) {
+        // 2. UPDATE ARRAY UTAMA SECARA PAKSA (PENTING!)
+        // Kita buat array baru agar useMemo 'filtered' mendeteksi perubahan
+        setAllPlaces((prevPlaces) => 
+          prevPlaces.map((p) => (p.id === placeId ? updatedPlace : p))
+        );
 
-        // 2. UPDATE LIST UTAMA (PENTING: Gunakan Functional Update + New Reference)
-        setAllPlaces((prev) => {
-          const index = prev.findIndex((p) => p.id === placeId);
-          if (index === -1) return prev;
-
-          const newPlaces = [...prev]; // Copy array
-          newPlaces[index] = { ...updatedPlace }; // Ganti dengan objek baru (copy)
-          return newPlaces; // Return array baru
-        });
+        // 3. Update modal yang sedang aktif
+        setSelected(updatedPlace);
         
-        console.log("Sync Berhasil!");
+        console.log("State React sudah sinkron dengan database!");
       }
     }
   };
@@ -667,7 +663,7 @@ export default function App() {
       />
 
       <PlaceDetail
-        key={selected?.id || 'none'}
+        key={selected ? `${selected.id}-${selected.rating}-${(selected as any)?.reviews?.length}` : 'none'}
         place={selected}
         isFavorite={selected ? favorites.has(selected.id) : false}
         reviews={(selected as any)?.reviews || []}

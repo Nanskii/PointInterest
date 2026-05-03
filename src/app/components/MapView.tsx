@@ -88,17 +88,25 @@ export function MapView({ places, selected, onSelect, isDark, userLoc, onLocate,
     });
 
     places.forEach((p) => {
-      if (existing.has(p.id)) return;
       const meta = CATEGORY_META[p.category];
       if (!meta) return;
 
-      const marker = L.marker([p.lat, p.lng], { icon: makeIcon(meta.color, meta.emoji) });
+      // 1. Ambil marker yang sudah ada (jika ada)
+      let marker = existing.get(p.id);
 
-      // Membuat kontainer pop-up yang bisa diklik
+      // 2. Jika marker belum ada, buat baru
+      if (!marker) {
+        marker = L.marker([p.lat, p.lng], { icon: makeIcon(meta.color, meta.emoji) });
+        marker.addTo(map);
+        existing.set(p.id, marker);
+      }
+
+      // 3. KUNCI PERBAIKAN: Selalu perbarui isi Pop-up dengan data terbaru (p)
       const popupDiv = document.createElement('div');
-      popupDiv.className = "popup-inner-container"; // Untuk target klik
+      popupDiv.className = "popup-inner-container";
       popupDiv.style.cssText = "width:220px; cursor:pointer;";
 
+      // Perhatikan p.rating dan p.image di sini akan selalu segar
       popupDiv.innerHTML = `
         <img src="${p.image}" style="width:100%; height:115px; object-fit:cover; display:block;" />
         <div class="popup-inner-content" style="padding:12px;">
@@ -115,20 +123,16 @@ export function MapView({ places, selected, onSelect, isDark, userLoc, onLocate,
         </div>
       `;
 
-      // Seluruh area pop-up sekarang memicu onSelect
       popupDiv.onclick = () => {
-        onSelectRef.current(p);
-        marker.closePopup();
+        onSelectRef.current(p); // Ini sekarang mengirim data 'p' yang sudah update (4.5)
+        marker!.closePopup();
       };
 
-      // Menambahkan class custom agar styling Leaflet bawaan tidak merusak desain
+      // Bind ulang popup agar kontennya terupdate
       marker.bindPopup(popupDiv, {
         className: 'modern-popup',
         maxWidth: 250
       });
-
-      marker.addTo(map);
-      existing.set(p.id, marker);
     });
   }, [places]);
   // Drop / update the user's current-location marker
