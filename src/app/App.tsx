@@ -255,31 +255,33 @@ export default function App() {
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     
-    // Pastikan allPlaces tidak undefined atau null sebelum di-filter
-    return (allPlaces || []).filter((p) => {
-      // 1. Filter Kategori
+    // 1. Filter awal berdasarkan kategori, favorit, dan rating
+    let result = (allPlaces || []).filter((p) => {
       if (!activeCategories.has(p.category)) return false;
-      
-      // 2. Filter Favorit (Gunakan opsional chaining agar tidak crash)
       if (showFavorites && !favorites?.has(p.id)) return false;
-      
-      // 3. Filter Rating
       if (p.rating < minRating) return false;
       
-      // 4. Jika tidak ada pencarian, tampilkan semua yang lolos filter di atas
       if (!q) return true;
       
-      // 5. Filter Pencarian (Pastikan p.tags adalah array sebelum memanggil .some)
       const tagsArray = Array.isArray(p.tags) ? p.tags : [];
-      
       return (
         p.name.toLowerCase().includes(q) ||
         p.region.toLowerCase().includes(q) ||
         tagsArray.some((t) => String(t).toLowerCase().includes(q))
       );
     });
-  }, [allPlaces, activeCategories, search, showFavorites, favorites, minRating]);
 
+    // 2. LOGIKA JARAK: Jika lokasi user ditemukan, hitung jarak dan urutkan
+    if (userLoc) {
+      result = result.map(p => ({
+        ...p,
+        // Tambahkan property jarak secara temporary untuk sorting
+        distance: distanceKm(userLoc, { lat: p.lat, lng: p.lng })
+      })).sort((a, b) => (a.distance || 0) - (b.distance || 0));
+    }
+
+    return result;
+  }, [allPlaces, activeCategories, search, showFavorites, favorites, minRating, userLoc]); // <-- Tambahkan userLoc di dependency
   // Lightweight recommender: blends proximity, favorited categories, and rating
   const recommendations = useMemo(() => {
     const favPlaces = allPlaces.filter((p) => favorites.has(p.id));
