@@ -50,6 +50,7 @@ export function MapView({ places, selected, onSelect, isDark, userLoc, onLocate,
       center: [-2.5, 118],
       zoom: 5,
       scrollWheelZoom: true,
+      preferCanvas: true,
     });
     mapRef.current = map;
     return () => {
@@ -123,9 +124,9 @@ export function MapView({ places, selected, onSelect, isDark, userLoc, onLocate,
         </div>
       `;
 
-      popupDiv.onclick = () => {
-        onSelectRef.current(p); // Ini sekarang mengirim data 'p' yang sudah update (4.5)
-        marker!.closePopup();
+      popupDiv.onclick = (e) => {
+        e.stopPropagation(); // Biar kliknya gak tembus ke map di bawahnya
+        onSelectRef.current(p);
       };
 
       // Bind ulang popup agar kontennya terupdate
