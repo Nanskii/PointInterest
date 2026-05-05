@@ -495,7 +495,10 @@ export default function App() {
             <button
               key={c}
               onClick={() => toggleCategory(c)}
-              className={`shrink-0 px-4 py-1.5 rounded-full !important overflow-hidden border text-sm transition-all hover:scale-105 ${
+              className={`px-5 py-2 rounded-full text-sm font-medium 
+                          transition-all duration-300 ease-out 
+                          flex items-center gap-2
+                          hover:scale-105 hover:-translate-y-0.5 ${
               active
                 ? `${{
                   nature: "bg-gradient-to-r from-green-400 to-green-600 text-white border-transparent",
@@ -503,7 +506,7 @@ export default function App() {
                   traditional: "bg-gradient-to-r from-orange-400 to-green-500 text-white border-transparent",
                   modern: "bg-gradient-to-r from-blue-400 to-teal-400 text-white border-transparent"
                 }[c]
-                } text-white border-transparent shadow-md`
+                } text-white shadow-lg`
                   : isDark
                     ? "bg-neutral-800 text-neutral-300 border-neutral-700"
                       : "bg-white text-neutral-600 border-neutral-200"
