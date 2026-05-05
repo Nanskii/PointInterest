@@ -493,25 +493,25 @@ export default function App() {
           console.log("category:", c, "gradient:", CATEGORY_GRADIENT[c]);
           return (
             <button
-  key={c}
-  onClick={() => toggleCategory(c)}
-  className={`shrink-0 px-4 py-1.5 rounded-full border text-sm transition-all hover:scale-105 active:scale-95 ${
-    active
-      ? `${
-          {
-            nature: "bg-gradient-to-r from-green-400 to-green-600",
-            cultural: "bg-gradient-to-r from-purple-500 to-blue-500",
-            traditional: "bg-gradient-to-r from-orange-400 to-green-500",
-            modern: "bg-gradient-to-r from-blue-400 to-teal-400"
-          }[c]
-        } text-white border-transparent shadow-md`
-      : isDark
-        ? "bg-neutral-800 text-neutral-300 border-neutral-700"
-        : "bg-white text-neutral-600 border-neutral-200"
-  }`}
->
-  {meta.emoji} {meta.label}
-</button>
+              key={c}
+              onClick={() => toggleCategory(c)}
+              className={`${
+              active
+                ? `${{
+                  nature: "bg-gradient-to-r from-green-400 to-green-600 text-white border-transparent",
+                  cultural: "bg-gradient-to-r from-purple-500 to-blue-500 text-white border-transparent",
+                  traditional: "bg-gradient-to-r from-orange-400 to-green-500 text-white border-transparent",
+                  modern: "bg-gradient-to-r from-blue-400 to-teal-400 text-white border-transparent"
+                }[c]
+                } text-white border-transparent shadow-md`
+                  : isDark
+                    ? "bg-neutral-800 text-neutral-300 border-neutral-700"
+                      : "bg-white text-neutral-600 border-neutral-200"
+                }`}
+              style={active ? { background: CATEGORY_GRADIENT[c] || "red" } : {}}
+            >
+              {meta.emoji} {meta.label}
+            </button>
           );
         })}
 
