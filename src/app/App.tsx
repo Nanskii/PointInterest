@@ -484,7 +484,7 @@ export default function App() {
         {CATEGORIES.map((c) => {
           const meta = CATEGORY_META[c];
           const CATEGORY_GRADIENT = {
-                nature: "linear-gradient(135deg, #22C55E, #16A34A)",
+                nature: "linear-gradient(135deg, #22C55E, #4ADE80)",
                 cultural: "linear-gradient(135deg, #9333EA, #3B82F6)",
                 traditional: "linear-gradient(135deg, #F97316, #16A34A)",
                 modern: "linear-gradient(135deg, #0EA5E9, #14B8A6)"
@@ -495,14 +495,17 @@ export default function App() {
             <button
               key={c}
               onClick={() => toggleCategory(c)}
-              className={`${
+              className={`shrink-0 px-4 py-1.5 rounded-full border text-sm 
+                          transition-all duration-300 ease-out 
+                          hover:scale-105 hover:-translate-y-0.5 hover:shadow-xl hover:brightness-110 ${
               active
-                ? {
+                ? `text-white border-transparent shadow-md ${
                   nature: "bg-gradient-to-r from-green-400 to-green-600 text-white border-transparent",
                   cultural: "bg-gradient-to-r from-purple-500 to-blue-500 text-white border-transparent",
                   traditional: "bg-gradient-to-r from-orange-400 to-green-500 text-white border-transparent",
                   modern: "bg-gradient-to-r from-blue-400 to-teal-400 text-white border-transparent"
                 }[c]
+                }`
                   : isDark
                     ? "bg-neutral-800 text-neutral-300 border-neutral-700"
                       : "bg-white text-neutral-600 border-neutral-200"
