@@ -486,6 +486,12 @@ export default function App() {
           const active = activeCategories.has(c);
           return (
             <button
+              const CATEGORY_GRADIENT = {
+                nature: "linear-gradient(135deg, #22C55E, #16A34A)",
+                cultural: "linear-gradient(135deg, #9333EA, #3B82F6)",
+                traditional: "linear-gradient(135deg, #F97316, #16A34A)",
+                modern: "linear-gradient(135deg, #0EA5E9, #14B8A6)"
+              };
               key={c}
               onClick={() => toggleCategory(c)}
               className={`shrink-0 px-4 py-1.5 rounded-full border text-sm transition-all hover:scale-105 active:scale-95 ${
@@ -495,7 +501,7 @@ export default function App() {
                     ? "bg-neutral-800/80 text-neutral-300 border-neutral-700 hover:border-neutral-500"
                     : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
               }`}
-              style={active ? { backgroundColor: meta.color } : {}}
+              style={active ? "text-white border-transparent shadow-lg" { background: CATEGORY_GRADIENT[c] } : {}}
             >
               {meta.emoji} {meta.label}
             </button>
