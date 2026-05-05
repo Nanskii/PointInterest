@@ -495,7 +495,7 @@ export default function App() {
             <button
               key={c}
               onClick={() => toggleCategory(c)}
-              className={`${
+              className={`shrink-0 px-4 py-1.5 rounded-full !important overflow-hidden border text-sm transition-all hover:scale-105 ${
               active
                 ? `${{
                   nature: "bg-gradient-to-r from-green-400 to-green-600 text-white border-transparent",
