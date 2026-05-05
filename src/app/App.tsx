@@ -612,9 +612,9 @@ export default function App() {
                 </h3>
                 <button
                   onClick={() => setShowFavorites((v) => !v)}
-                  className="md:hidden text-sm text-orange-500 flex items-center gap-1"
+                  className="md:hidden text-sm text-pink-500 flex items-center gap-1"
                 >
-                  <Heart className={`w-4 h-4 ${showFavorites ? "fill-orange-500" : ""}`} />
+                  <Heart className={`w-4 h-4 ${showFavorites ? "fill-pink-500" : ""}`} />
                   {favorites.size}
                 </button>
               </div>
