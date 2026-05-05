@@ -32,7 +32,9 @@ export function PlaceCard({ place, isFavorite, onToggleFavorite, onSelect }: Pro
           aria-label="Toggle favorite"
         >
           <Heart
-            className={`w-5 h-5 transition-colors ${isFavorite ? "fill-orange-500 text-orange-500" : "text-neutral-600"}`}
+              className={`w-5 h-5 transition-colors ${
+                isFavorite ? "fill-pink-500 text-pink-500" : "text-neutral-600"
+              }`}
           />
         </button>
         <span
