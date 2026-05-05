@@ -405,10 +405,10 @@ export default function App() {
           onClick={() => setShowFavorites((v) => !v)}
           className={`hidden md:flex items-center gap-1.5 px-4 py-2 rounded-full border transition-colors text-sm ${
             showFavorites
-              ? "bg-orange-500 text-white border-orange-500"
+              ? "bg-gradient-to-r from-pink-400 to-pink-600 text-white border-pink-500"
               : isDark
-                ? "bg-neutral-800 text-neutral-200 border-neutral-700 hover:border-orange-400"
-                : "bg-white text-neutral-700 border-neutral-200 hover:border-orange-400"
+                ? "bg-neutral-800 text-neutral-200 border-neutral-700 hover:border-pink-400"
+                : "bg-white text-neutral-700 border-neutral-200 hover:border-pink-400"
           }`}
         >
           <Heart className={`w-4 h-4 ${showFavorites ? "fill-white" : ""}`} />
