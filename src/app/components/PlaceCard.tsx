@@ -35,8 +35,14 @@ export function PlaceCard({ place, isFavorite, onToggleFavorite, onSelect }: Pro
           />
         </button>
         <span
-          className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs text-white backdrop-blur-md shadow-md"
-          style={{ backgroundColor: meta.color }}
+          className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs text-white backdrop-blur-md shadow-md ${
+          {
+            nature: "bg-gradient-to-r from-green-400 to-green-600",
+            cultural: "bg-gradient-to-r from-purple-500 to-blue-500",
+            traditional: "bg-gradient-to-r from-orange-400 to-green-500",
+            modern: "bg-gradient-to-r from-blue-400 to-teal-400"
+            }[place.category]
+          }`}
         >
           {meta.emoji} {meta.label}
         </span>
