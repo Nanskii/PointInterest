@@ -483,25 +483,25 @@ export default function App() {
       <div className={`px-4 md:px-6 py-3 flex gap-2 overflow-x-auto shrink-0 border-b backdrop-blur-xl transition-colors items-center ${isDark ? "bg-neutral-900/60 border-neutral-800" : "bg-white/70 border-neutral-200/70"}`}>
         {CATEGORIES.map((c) => {
           const meta = CATEGORY_META[c];
-          const active = activeCategories.has(c);
-          return (
-            <button
-              const CATEGORY_GRADIENT = {
+          const CATEGORY_GRADIENT = {
                 nature: "linear-gradient(135deg, #22C55E, #16A34A)",
                 cultural: "linear-gradient(135deg, #9333EA, #3B82F6)",
                 traditional: "linear-gradient(135deg, #F97316, #16A34A)",
                 modern: "linear-gradient(135deg, #0EA5E9, #14B8A6)"
               };
+          const active = activeCategories.has(c);
+          return (
+            <button
               key={c}
               onClick={() => toggleCategory(c)}
               className={`shrink-0 px-4 py-1.5 rounded-full border text-sm transition-all hover:scale-105 active:scale-95 ${
                 active
-                  ? "text-white border-transparent shadow-md"
+                  ? "text-white border-transparent shadow-lg"
                   : isDark
                     ? "bg-neutral-800/80 text-neutral-300 border-neutral-700 hover:border-neutral-500"
                     : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
               }`}
-              style={active ? "text-white border-transparent shadow-lg" { background: CATEGORY_GRADIENT[c] } : {}}
+              style={active ? { background: CATEGORY_GRADIENT[c] } : {}}
             >
               {meta.emoji} {meta.label}
             </button>
