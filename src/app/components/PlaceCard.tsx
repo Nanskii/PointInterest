@@ -12,6 +12,7 @@ interface Props {
 
 export function PlaceCard({ place, isFavorite, onToggleFavorite, onSelect }: Props) {
   const meta = CATEGORY_META[place.category];
+  console.log("CATEGORY:", place.category);
   return (
     <motion.div
       whileHover={{ y: -4 }}
@@ -35,17 +36,17 @@ export function PlaceCard({ place, isFavorite, onToggleFavorite, onSelect }: Pro
           />
         </button>
         <span
-          className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs text-white backdrop-blur-md shadow-md ${
-          {
-            nature: "bg-gradient-to-r from-green-400 to-green-600",
-            cultural: "bg-gradient-to-r from-purple-500 to-blue-500",
-            traditional: "bg-gradient-to-r from-orange-400 to-green-500",
-            modern: "bg-gradient-to-r from-blue-400 to-teal-400"
-            }[place.category]
+          className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs text-white shadow-md ${
+            {
+              nature: "bg-gradient-to-r from-green-400 to-green-600",
+              cultural: "bg-gradient-to-r from-purple-500 to-blue-500",
+              traditional: "bg-gradient-to-r from-orange-400 to-green-500",
+              modern: "bg-gradient-to-r from-blue-400 to-teal-400"
+            }[place.category] || "bg-red-500"
           }`}
         >
           {meta.emoji} {meta.label}
-        </span>
+      </span>
       </div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-2 mb-1">
