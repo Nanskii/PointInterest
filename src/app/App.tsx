@@ -490,11 +490,12 @@ export default function App() {
                 modern: "linear-gradient(135deg, #0EA5E9, #14B8A6)"
               };
           const active = activeCategories.has(c);
+          console.log("category:", c, "gradient:", CATEGORY_GRADIENT[c]);
           return (
             <button
               key={c}
               onClick={() => toggleCategory(c)}
-              className={`shrink-0 px-4 py-1.5 rounded-full border text-sm transition-all ${
+              className={`${
               active
                 ? {
                   nature: "bg-gradient-to-r from-green-400 to-green-600 text-white border-transparent",
@@ -506,7 +507,7 @@ export default function App() {
                     ? "bg-neutral-800 text-neutral-300 border-neutral-700"
                       : "bg-white text-neutral-600 border-neutral-200"
                 }`}
-              style={active ? { background: CATEGORY_GRADIENT[c] } : {}}
+              style={active ? { background: CATEGORY_GRADIENT[c] || "red" } : {}}
             >
               {meta.emoji} {meta.label}
             </button>
