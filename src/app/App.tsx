@@ -494,13 +494,18 @@ export default function App() {
             <button
               key={c}
               onClick={() => toggleCategory(c)}
-              className={`shrink-0 px-4 py-1.5 rounded-full border text-sm transition-all hover:scale-105 active:scale-95 ${
-                active
-                  ? "text-white border-transparent shadow-lg"
+              className={`shrink-0 px-4 py-1.5 rounded-full border text-sm transition-all ${
+              active
+                ? {
+                  nature: "bg-gradient-to-r from-green-400 to-green-600 text-white border-transparent",
+                  cultural: "bg-gradient-to-r from-purple-500 to-blue-500 text-white border-transparent",
+                  traditional: "bg-gradient-to-r from-orange-400 to-green-500 text-white border-transparent",
+                  modern: "bg-gradient-to-r from-blue-400 to-teal-400 text-white border-transparent"
+                }[c]
                   : isDark
-                    ? "bg-neutral-800/80 text-neutral-300 border-neutral-700 hover:border-neutral-500"
-                    : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
-              }`}
+                    ? "bg-neutral-800 text-neutral-300 border-neutral-700"
+                      : "bg-white text-neutral-600 border-neutral-200"
+                }`}
               style={active ? { background: CATEGORY_GRADIENT[c] } : {}}
             >
               {meta.emoji} {meta.label}
